@@ -54,6 +54,7 @@ async function verifyOTP(request, reply) {
     const otpId = data?.otpId;
     const otp = data?.otp?.toString();
     const mobile = data?.mobile?.toString();
+    const type = data?.type || "not-auth";
 
     if (!otpId || !otp) {
       return reply.code(400).send({
@@ -70,7 +71,9 @@ async function verifyOTP(request, reply) {
       });
     }
 
-    const admin = await User.query().findOne({
+    let token = ""
+   if(type !== "not-auth"){
+     const admin = await User.query().findOne({
       mobile,
       role: "admin",
     });
@@ -81,6 +84,15 @@ async function verifyOTP(request, reply) {
         message: "Admin not registered or not authorized.",
       });
     }
+
+      const payload = {
+      sub: admin.id,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 10,
+    };
+
+     token = jwt.sign(payload, env.TOKEN_SECRET, { algorithm: "HS256" });
+   }
 
     const isOtpVerified = verify(otp, isOtpExist.otp);
 
@@ -102,14 +114,6 @@ async function verifyOTP(request, reply) {
     }
 
     await OTP.query().deleteById(otpId);
-
-    const payload = {
-      sub: admin.id,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 10,
-    };
-
-    const token = jwt.sign(payload, env.TOKEN_SECRET, { algorithm: "HS256" });
 
     return reply.code(200).send({
       status: true,
