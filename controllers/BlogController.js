@@ -5,20 +5,20 @@ const path = require("path");
 async function blogs(request, reply) {
   try {
     const method = request.method;
-    const { page = 1, limit = 1 } = request.query;
+    const { page = 1, per_page = 1 } = request.query;
     const pageIndex = Math.max(Number(page) - 1, 0);
-    const pageSize = Number(limit);
+    const pageSize = Number(per_page);
 
     if (method === "GET") {
       const data = await Blog.query()
+        .where("featured", "true")
         .whereNull("is_delete")
-        .orderBy("created_at", "desc")
-        .page(pageIndex, pageSize);
+        .orderBy("created_at", "desc");
 
       const recentBlog = await Blog.query()
         .whereNull("is_delete")
         .orderBy("created_at", "desc")
-        .limit(5);
+        .page(pageIndex, pageSize);
 
       const categoryCounts = await Blog.query()
         .whereNull("is_delete")
@@ -29,12 +29,12 @@ async function blogs(request, reply) {
       return reply.send({
         status: true,
         data: data,
-        recentblog: recentBlog,
+        recentblog: recentBlog?.results,
         categoryCounts,
-        totalCount: data.total,
-        totalPages: Math.ceil(data.total / pageSize),
+        totalCount: recentBlog.total,
+        totalPages: Math.ceil(recentBlog.total / per_page),
         page: Number(page),
-        limit: pageSize,
+        limit: per_page,
       });
     }
 
@@ -162,7 +162,7 @@ async function edit(request, reply) {
         .where("category", category)
         .whereNull("is_delete")
         .orderBy("created_at", "desc")
-        .page(0, 2); 
+        .page(0, 2);
 
       const categoryCounts = await Blog.query()
         .whereNull("is_delete")

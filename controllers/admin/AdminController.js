@@ -35,7 +35,7 @@ async function login(request, reply) {
 
     await sendOtptoSMS(generatedOtp, 10, mobile);
 
-    console.log("generatedOtp",generatedOtp);
+    console.log("generatedOtp", generatedOtp);
 
     const otps = await OTP.query().insert({
       mobile,
