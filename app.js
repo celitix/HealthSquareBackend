@@ -66,7 +66,7 @@ fastify.register(require("./plugins/db"));
 
 const startServer = async () => {
   try {
-    await fastify.listen({ port: 3593, host: "localhost" });
+    await fastify.listen({ port: 3593, host: "0.0.0.0" });
     console.log(`Server running at http://localhost:3593`);
   } catch (err) {
     fastify.log.error(err);

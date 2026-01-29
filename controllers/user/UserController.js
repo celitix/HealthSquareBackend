@@ -1,7 +1,10 @@
 const OTP = require("../../models/Otp");
+const User = require("../../models/User");
 const { hash, verify } = require("../../plugins/bcrypt");
 const generateOtp = require("../../plugins/generateOtp");
+const jwt = require("jsonwebtoken");
 const { sendOtptoSMS } = require("../../utils/sendOtp");
+const env = require("../../env");
 
 async function Hello(request, reply) {
   return reply.send({ message: "got hello" });
@@ -50,6 +53,7 @@ async function verifyOTP(request, reply) {
     const { data } = request.body;
     const otpId = data?.otpId;
     const otp = data?.otp?.toString();
+    const mobile = data?.mobile?.toString();
 
     if (!otpId || !otp) {
       return reply.code(400).send({
@@ -63,6 +67,18 @@ async function verifyOTP(request, reply) {
       return reply.code(200).send({
         status: true,
         message: "Invalid OTP.",
+      });
+    }
+
+    const admin = await User.query().findOne({
+      mobile,
+      role: "admin",
+    });
+
+    if (!admin) {
+      return reply.code(401).send({
+        status: false,
+        message: "Admin not registered or not authorized.",
       });
     }
 
@@ -87,12 +103,20 @@ async function verifyOTP(request, reply) {
 
     await OTP.query().deleteById(otpId);
 
+    const payload = {
+      sub: admin.id,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 10,
+    };
+
+    const token = jwt.sign(payload, env.TOKEN_SECRET, { algorithm: "HS256" });
+
     return reply.code(200).send({
       status: true,
       message: "OTP verified successfully.",
+      token,
     });
   } catch (error) {
-    console.error("Error verifying OTP:", error);
     return reply.code(500).send({
       status: false,
       message: "Internal Server Error",

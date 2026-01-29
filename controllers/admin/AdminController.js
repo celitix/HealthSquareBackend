@@ -1,5 +1,10 @@
 const jwt = require("jsonwebtoken");
 const env = require("../../env");
+const User = require("../../models/User");
+const generateOtp = require("../../plugins/generateOtp");
+const { sendOtptoSMS } = require("../../utils/sendOtp");
+const OTP = require("../../models/Otp");
+const { hash } = require("../../plugins/bcrypt");
 
 async function login(request, reply) {
   try {
@@ -25,6 +30,19 @@ async function login(request, reply) {
       });
     }
 
+    const generatedOtp = await generateOtp();
+    const otp = await hash(String(generatedOtp));
+
+    await sendOtptoSMS(generatedOtp, 10, mobile);
+
+    console.log("generatedOtp",generatedOtp);
+
+    const otps = await OTP.query().insert({
+      mobile,
+      otp,
+      expiry_at: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
     const payload = {
       sub: admin.id,
       iat: Math.floor(Date.now() / 1000),
@@ -34,8 +52,13 @@ async function login(request, reply) {
     const token = jwt.sign(payload, env.TOKEN_SECRET, { algorithm: "HS256" });
     return reply.code(200).send({
       status: true,
-      token,
+      message: "OTP sent successfully.",
+      otpId: otps.id,
     });
+    // return reply.code(200).send({
+    //   status: true,
+    //   token,
+    // });
   } catch (error) {
     console.error("Error sending OTP:", error);
     return reply.code(500).send({
@@ -44,8 +67,6 @@ async function login(request, reply) {
     });
   }
 }
-
-
 
 module.exports = {
   login,
