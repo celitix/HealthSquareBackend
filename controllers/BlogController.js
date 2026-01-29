@@ -13,7 +13,8 @@ async function blogs(request, reply) {
       const data = await Blog.query()
         .where("featured", "true")
         .whereNull("is_delete")
-        .orderBy("created_at", "desc");
+        .orderBy("created_at", "desc")
+        .limit(3);
 
       const recentBlog = await Blog.query()
         .whereNull("is_delete")
@@ -28,7 +29,7 @@ async function blogs(request, reply) {
 
       return reply.send({
         status: true,
-        data: data,
+        data,
         recentblog: recentBlog?.results,
         categoryCounts,
         totalCount: recentBlog.total,
